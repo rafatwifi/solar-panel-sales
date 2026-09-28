@@ -137,7 +137,7 @@ if ($panelQtyChosen <= 0) {
 if (array_key_exists('panel_count', $result)) {
     $panelNeedCount = (int) $result['panel_count'];
     if ($panelNeedCount <= 0 && $panelQtyChosen <= 0) {
-        $panelMessage = 'لا حاجة لألواح لأن التجهيز النهاري صفر';
+        $panelMessage = 'لا حاجة لألواح لأن الاستهلاك صفر';
         $panelStatus = 'ok';
     } else {
         $panelMessage = fit_text('الألواح', $panelStatus, $panelQtyChosen . ' لوح', $panelNeedCount . ' لوح');
@@ -312,7 +312,7 @@ render_header('طلب ' . ($order['code'] ?? ''), 'orders.php');
   <summary>أرقام الحساب</summary>
   <p>الجهد <?php echo h($assumptions['ac_voltage'] ?? ''); ?> فولت، شمس <?php echo h($assumptions['peak_sun_hours'] ?? ''); ?> ساعة، كفاءة الألواح <?php echo h($assumptions['pv_efficiency_percent'] ?? ''); ?>%، هامش الإنفرتر <?php echo h($assumptions['inverter_margin_percent'] ?? ''); ?>%.</p>
   <p>البطارية تُستهلك لحد ما يبقى <?php echo h($assumptions['battery_reserve_percent'] ?? max(0, 100 - (float) ($assumptions['battery_dod_percent'] ?? 20))); ?>%، كفاءة البطارية <?php echo h($assumptions['battery_efficiency_percent'] ?? ''); ?>%.</p>
-  <p>المطلوب: <?php echo isset($result['panel_count']) ? ((int) $result['panel_count'] . ' لوح (أمبير النهار × ' . h($assumptions['day_panel_factor'] ?? '') . ')') : h(watts_text($result['pv_watts'] ?? 0)); ?>، إنفرتر <?php echo h(watts_text($result['inverter_watts'] ?? 0)); ?>، بطارية <?php echo h(kwh_text($batteryNeed)); ?><?php if ($boardRange): ?>، بورد <?php echo h(amp_range_text($boardRange['min'], $boardRange['max'])); ?> (أكبر أمبير <?php echo h(amp_text($systemAmps)); ?>)<?php endif; ?>.</p>
+  <p>المطلوب: <?php echo isset($result['panel_count']) ? ((int) $result['panel_count'] . ' لوح') : h(watts_text($result['pv_watts'] ?? 0)); ?>، إنفرتر <?php echo h(watts_text($result['inverter_watts'] ?? 0)); ?>، بطارية <?php echo h(kwh_text($batteryNeed)); ?><?php if ($boardRange): ?>، بورد <?php echo h(amp_range_text($boardRange['min'], $boardRange['max'])); ?> (أكبر أمبير <?php echo h(amp_text($systemAmps)); ?>)<?php endif; ?>.</p>
 </details>
 
 <?php if (is_admin()): ?>

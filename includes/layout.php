@@ -39,7 +39,7 @@ function render_head($title)
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/css/app.css?v=2">
+  <link rel="stylesheet" href="assets/css/app.css?v=3">
 </head>
     <?php
 }

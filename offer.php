@@ -48,6 +48,11 @@ if (array_key_exists('grand_total', $order)) {
     $grandTotal = (int) ($order['equipment_total'] ?? 0) + (int) ($order['installation_fee'] ?? 0);
 }
 $auto = (($_GET['download'] ?? '') === '1') ? '1' : '0';
+$input = (isset($order['input']) && is_array($order['input'])) ? $order['input'] : [];
+$dayAmpsText = amp_text($input['day_amps'] ?? 0);
+$nightAmpsText = amp_text($input['night_amps'] ?? 0);
+$nightHoursRaw = round((float) ($input['night_hours'] ?? 0), 2);
+$nightHoursText = rtrim(rtrim(number_format($nightHoursRaw, 2, '.', ''), '0'), '.') . ' ساعة';
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -72,8 +77,10 @@ $auto = (($_GET['download'] ?? '') === '1') ? '1' : '0';
       top: 0;
       z-index: 5;
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       align-items: center;
+      gap: 8px;
       padding: 12px;
       background: #10243f;
       border-bottom: 3px solid #e39b16;
@@ -93,13 +100,11 @@ $auto = (($_GET['download'] ?? '') === '1') ? '1' : '0';
     .stage { padding: 22px 12px 36px; overflow: auto; }
     .sheet-shadow {
       width: 794px;
-      max-width: 100%;
       margin: 0 auto;
       box-shadow: 0 18px 48px rgba(16, 36, 63, .16);
     }
     .sheet {
       width: 794px;
-      max-width: 100%;
       margin: 0 auto;
       background: #fff;
       color: #1c2430;
@@ -209,6 +214,33 @@ $auto = (($_GET['download'] ?? '') === '1') ? '1' : '0';
       overflow-wrap: break-word;
     }
     .party strong.ltr { text-align: right; }
+    .facts { display: flex; margin-bottom: 20px; }
+    .fact {
+      flex: 1;
+      min-width: 0;
+      background: #10243f;
+      color: #fff;
+      border-radius: 14px;
+      padding: 12px 10px;
+      text-align: center;
+      border-bottom: 4px solid #e39b16;
+    }
+    .fact + .fact { margin-right: 10px; }
+    .fact .k {
+      display: block;
+      color: #ffd56a;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .fact strong {
+      display: block;
+      margin-top: 4px;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.3;
+    }
     .sec {
       display: flex;
       align-items: center;
@@ -421,6 +453,21 @@ $auto = (($_GET['download'] ?? '') === '1') ? '1' : '0';
             <div class="party">
               <span class="k">الهاتف</span>
               <strong class="ltr"><?php echo h($order['customer_phone'] ?? ''); ?></strong>
+            </div>
+          </section>
+
+          <section class="facts">
+            <div class="fact">
+              <span class="k">أمبير نهاري</span>
+              <strong><?php echo h($dayAmpsText); ?></strong>
+            </div>
+            <div class="fact">
+              <span class="k">أمبير ليلي</span>
+              <strong><?php echo h($nightAmpsText); ?></strong>
+            </div>
+            <div class="fact">
+              <span class="k">ساعات التشغيل الليلي</span>
+              <strong><?php echo h($nightHoursText); ?></strong>
             </div>
           </section>
 

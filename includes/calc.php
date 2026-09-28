@@ -50,15 +50,13 @@ function calculate_design($input, $settings)
     $dayHours = (float) $input['day_hours'];
     $nightHours = (float) $input['night_hours'];
     $dailyWh = ($dayWatts * $dayHours) + ($nightWatts * $nightHours);
+    $sunHours = max(0.1, (float) $settings['peak_sun_hours']);
+    $efficiency = max(0.01, min(1, ((float) $settings['pv_efficiency_percent']) / 100));
     $margin = 1 + (max(0, (float) $settings['inverter_margin_percent']) / 100);
     $reserve = max(0, min(99, (float) ($settings['battery_reserve_percent'] ?? (100 - (float) $settings['battery_dod_percent']))));
     $dod = max(0.01, (100 - $reserve) / 100);
     $batteryEfficiency = max(0.01, min(1, ((float) $settings['battery_efficiency_percent']) / 100));
-    $factor = max(0.01, (float) ($settings['day_panel_factor'] ?? 1.75));
-    $panelCount = (int) ceil(((float) $input['day_amps'] * $factor) - 0.0000001);
-    if ($panelCount < 0) {
-        $panelCount = 0;
-    }
+    $pvWatts = $dailyWh / ($sunHours * $efficiency);
     $inverterWatts = max($dayWatts, $nightWatts) * $margin;
     $batteryKwh = (($nightWatts * $nightHours) / ($dod * $batteryEfficiency)) / 1000;
 
@@ -67,9 +65,8 @@ function calculate_design($input, $settings)
         'night_watts' => $nightWatts,
         'daily_wh' => $dailyWh,
         'daily_kwh' => $dailyWh / 1000,
-        'panel_count' => $panelCount,
-        'panel_factor' => $factor,
-        'pv_watts' => 0,
+        'panel_count' => 0,
+        'pv_watts' => $pvWatts,
         'inverter_watts' => $inverterWatts,
         'battery_kwh' => $batteryKwh,
         'voltage' => $voltage,
@@ -360,13 +357,13 @@ function build_quote($post, $user, $settings, $products)
         'night_hours' => $nightHours,
     ], $settings);
 
-    $panelCountNeed = (int) $design['panel_count'];
+    $pvNeed = (int) round($design['pv_watts']);
     $inverterNeed = (int) round($design['inverter_watts']);
     $batteryNeed = round($design['battery_kwh'], 2);
 
     $panel = product_by_id($products, $post['panel_id'] ?? '');
     $panelQty = (int) round(num($post['panel_qty'] ?? 0));
-    if ($panelCountNeed > 0 && (!$panel || ($panel['category'] ?? '') !== 'panel' || empty($panel['active']))) {
+    if ($pvNeed > 0 && (!$panel || ($panel['category'] ?? '') !== 'panel' || empty($panel['active']))) {
         $errors[] = 'اختر نوع اللوح';
     } elseif ($panel && (($panel['category'] ?? '') !== 'panel' || empty($panel['active']))) {
         $errors[] = 'اختر نوع اللوح';
@@ -445,7 +442,9 @@ function build_quote($post, $user, $settings, $products)
     $hiddenCosts = hidden_cost_rows($settings, $panel ? $panelQty : 0);
     $fee = hidden_cost_total($hiddenCosts);
 
-    $panelWatts = ($panel && $panelQty > 0) ? (int) round(((float) $panel['watts']) * $panelQty) : 0;
+    $panelWattsEach = $panel ? (float) ($panel['watts'] ?? 0) : 0;
+    $panelNeedForChosen = ($pvNeed > 0 && $panelWattsEach > 0) ? (int) ceil(($pvNeed / $panelWattsEach) - 0.0000001) : 0;
+    $panelWatts = ($panel && $panelQty > 0) ? (int) round($panelWattsEach * $panelQty) : 0;
     $chosenInverter = ($inverter && $inverterQty > 0) ? (int) round(((float) $inverter['watts']) * $inverterQty) : 0;
     $chosenBattery = ($battery && $batteryQty > 0) ? round(((float) $battery['kwh']) * $batteryQty, 2) : 0;
 
@@ -469,15 +468,15 @@ function build_quote($post, $user, $settings, $products)
             'day_watts' => (int) round($design['day_watts']),
             'night_watts' => (int) round($design['night_watts']),
             'daily_kwh' => round($design['daily_kwh'], 2),
-            'panel_count' => $panelCountNeed,
+            'panel_count' => $panelNeedForChosen,
             'panel_qty' => $panel ? $panelQty : 0,
-            'pv_watts' => $panelWatts,
+            'pv_watts' => $pvNeed,
             'inverter_watts' => $inverterNeed,
             'battery_kwh' => $batteryNeed,
             'panel_watts' => $panelWatts,
             'chosen_inverter_watts' => $chosenInverter,
             'chosen_battery_kwh' => $chosenBattery,
-            'panel_status' => fit_status($panel ? $panelQty : 0, $panelCountNeed),
+            'panel_status' => fit_status($panel ? $panelQty : 0, $panelNeedForChosen),
             'inverter_status' => fit_status($chosenInverter, $inverterNeed),
             'battery_status' => fit_status($chosenBattery, $batteryNeed),
             'system_amps' => round($systemAmps, 2),

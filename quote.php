@@ -154,11 +154,28 @@ render_header('تصميم منظومة', 'quote.php');
 <form id="quoteForm" class="card" method="post" novalidate>
   <?php echo csrf_field(); ?>
   <input type="hidden" name="order_id" value="<?php echo h($old['order_id'] ?? ''); ?>">
+  <div class="load-strip" id="loadStrip" aria-live="polite">
+    <div><span>أمبير نهاري</span><strong id="loadDayAmps">—</strong></div>
+    <div><span>أمبير ليلي</span><strong id="loadNightAmps">—</strong></div>
+    <div><span>ساعات الليل</span><strong id="loadNightHours">—</strong></div>
+  </div>
   <div class="wsteps">
-    <?php foreach (['الزبون', 'الأحمال', 'الألواح', 'الإنفرتر', 'البطارية', 'البوردات', 'الملخص'] as $i => $label): ?>
+    <?php
+      $stepLabels = [
+          ['الزبون', 'زبون'],
+          ['الأحمال', 'حمل'],
+          ['الألواح', 'ألواح'],
+          ['الإنفرتر', 'إنفرتر'],
+          ['البطارية', 'بطارية'],
+          ['البوردات', 'بورد'],
+          ['الملخص', 'ملخص'],
+      ];
+      foreach ($stepLabels as $i => $label):
+    ?>
       <button type="button" class="wstep" data-go="<?php echo $i; ?>">
         <span class="n"><?php echo $i + 1; ?></span>
-        <span class="step-label"><?php echo h($label); ?></span>
+        <span class="step-label"><?php echo h($label[0]); ?></span>
+        <span class="step-short"><?php echo h($label[1]); ?></span>
       </button>
     <?php endforeach; ?>
   </div>
@@ -170,7 +187,7 @@ render_header('تصميم منظومة', 'quote.php');
     <div class="chip"><span>البورد المطلوب</span><strong>—</strong></div>
   </div>
   <p id="dailyLine" class="hint"></p>
-  <p class="hint">عدد الألواح = أمبير النهار × <?php echo h($settings['day_panel_factor']); ?>. هذا المعامل يتغير من إعدادات الإدارة.</p>
+  <p class="hint">عدد الألواح يطلع من استهلاك النهار والليل، حتى تغطي النهار وتشحن الليل.</p>
 
   <section class="step active">
     <h2>بيانات الزبون</h2>
@@ -187,7 +204,7 @@ render_header('تصميم منظومة', 'quote.php');
 
   <section class="step">
     <h2>الأحمال</h2>
-    <p class="hint">الأمبير هو سحب الأجهزة على كهرباء <?php echo h($settings['ac_voltage']); ?> فولت. النهار والليل ينحسبان منفصلين.</p>
+    <p class="hint">الأمبير هو سحب الأجهزة على كهرباء <?php echo h($settings['ac_voltage']); ?> فولت. النهار والليل ينحسبان معاً في عدد الألواح.</p>
     <div class="amp-grid">
       <div class="field">
         <label for="day_amps">التجهيز النهاري (أمبير)</label>
@@ -210,7 +227,7 @@ render_header('تصميم منظومة', 'quote.php');
 
   <section class="step">
     <h2>الألواح</h2>
-    <p class="hint">العدد يطلع من أمبير النهار × المعامل. اختر نوع اللوح حتى ينثبت بالمنظومة.</p>
+    <p class="hint">النظام يختار أكبر لوح بأقل عدد يغطي الاستهلاك، وتقدر تغيّر النوع أو العدد.</p>
     <?php if (!$panels): ?>
       <div class="notice notice-low">لا توجد ألواح. <?php if (is_admin()): ?>أضفها من صفحة المنتجات.<?php else: ?>اطلب من الإدارة إضافة الألواح.<?php endif; ?></div>
     <?php else: ?>
@@ -235,7 +252,7 @@ render_header('تصميم منظومة', 'quote.php');
 
   <section class="step">
     <h2>الإنفرتر</h2>
-    <p class="hint">إذا كانت قدرته أعلى من المطلوب أو أقل، يظهر تنبيه قبل الإرسال.</p>
+    <p class="hint">النظام يختار الإنفرتر الذي يغطي الحمل بأقرب قدرة، وتقدر تغيّر النوع أو العدد. إذا كانت القدرة أعلى أو أقل يظهر تنبيه.</p>
     <?php if (!$inverters): ?>
       <div class="notice notice-low">لا توجد إنفرترات مضافة.</div>
     <?php else: ?>
@@ -260,7 +277,7 @@ render_header('تصميم منظومة', 'quote.php');
 
   <section class="step">
     <h2>البطارية</h2>
-    <p class="hint">السعة بالكيلو واط ساعة. النظام يقارنها بالطاقة التي يحتاجها الليل.</p>
+    <p class="hint">النظام يختار أقل عدد بطاريات يغطي حمل الليل، وتقدر تغيّر النوع أو العدد.</p>
     <div class="pick-grid" id="batteryGrid">
       <label class="pick-card">
         <input type="radio" name="battery_id" value=""<?php echo ($old['battery_id'] ?? '') === '' ? ' checked' : ''; ?>>
@@ -364,4 +381,4 @@ window.SOLAR = <?php echo json_for_script([
 ]); ?>;
 </script>
 <?php
-render_footer(['assets/js/quote.js?v=8']);
+render_footer(['assets/js/quote.js?v=16']);

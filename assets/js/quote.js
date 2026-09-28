@@ -64,21 +64,16 @@
     var reserve = Math.max(0, Math.min(99, num(s.battery_reserve_percent)));
     var dod = Math.max(0.01, (100 - reserve) / 100);
     var beff = Math.max(0.01, Math.min(1, num(s.battery_efficiency_percent) / 100));
-    var factor = Math.max(0.01, num(s.day_panel_factor) || 1.75);
     var dayAmps = num(val('day_amps'));
     var nightAmps = num(val('night_amps'));
-    var panelCount = Math.ceil((dayAmps * factor) - 1e-9);
-    if (panelCount < 0 || isNaN(panelCount)) panelCount = 0;
     return {
       dayW: dayW,
       nightW: nightW,
       dayAmps: dayAmps,
       nightAmps: nightAmps,
       systemAmps: Math.max(dayAmps, nightAmps),
-      factor: factor,
       dailyKwh: dailyWh / 1000,
-      panelCount: panelCount,
-      pv: 0,
+      pv: Math.round(dailyWh / (psh * eff)),
       psh: psh,
       eff: eff,
       inv: Math.round(Math.max(dayW, nightW) * margin),
@@ -135,6 +130,163 @@
 
   function systemAmps() {
     return Math.max(num(val('day_amps')), num(val('night_amps')));
+  }
+
+  var lastBatteryKey = null;
+  function batteryKey() {
+    return String(Math.round(currentDesign().battKwh * 100) / 100);
+  }
+  function recommendBattery(needKwh) {
+    var list = [];
+    for (var i = 0; i < products.length; i++) {
+      if (products[i].category === 'battery' && num(products[i].kwh) > 0) list.push(products[i]);
+    }
+    if (needKwh <= 0.05 || !list.length) return { id: '', qty: 1 };
+    var best = null;
+    var bestTotal = 0;
+    var bestQty = 0;
+    for (var j = 0; j < list.length; j++) {
+      var kwh = num(list[j].kwh);
+      var qty = Math.max(1, Math.ceil((needKwh / kwh) - 1e-9));
+      var total = qty * kwh;
+      var better = !best
+        || qty < bestQty
+        || (qty === bestQty && total < bestTotal - 0.001);
+      if (better) {
+        best = list[j];
+        bestTotal = total;
+        bestQty = qty;
+      }
+    }
+    return { id: best.id, qty: bestQty };
+  }
+  function applyBattery(choice) {
+    var radios = form.querySelectorAll('input[name="battery_id"]');
+    var found = false;
+    for (var i = 0; i < radios.length; i++) {
+      var on = radios[i].value === choice.id;
+      radios[i].checked = on;
+      if (on) found = true;
+    }
+    if (!found && choice.id) return;
+    var qtyInput = document.getElementById('battery_qty');
+    if (qtyInput) qtyInput.value = String(choice.qty);
+  }
+  function syncBatterySelection() {
+    var key = batteryKey();
+    if (lastBatteryKey === key) return;
+    lastBatteryKey = key;
+    applyBattery(recommendBattery(currentDesign().battKwh));
+  }
+
+  var lastInverterKey = null;
+  function inverterKey() {
+    return String(Math.round(currentDesign().inv));
+  }
+  function recommendInverter(needW) {
+    var list = [];
+    for (var i = 0; i < products.length; i++) {
+      if (products[i].category === 'inverter' && num(products[i].watts) > 0) list.push(products[i]);
+    }
+    if (needW <= 0 || !list.length) return null;
+    var best = null;
+    var bestTotal = 0;
+    var bestQty = 0;
+    for (var j = 0; j < list.length; j++) {
+      var watts = num(list[j].watts);
+      var qty = Math.max(1, Math.ceil((needW / watts) - 1e-9));
+      var total = qty * watts;
+      var better = !best
+        || total < bestTotal - 0.001
+        || (Math.abs(total - bestTotal) < 0.001 && qty < bestQty);
+      if (better) {
+        best = list[j];
+        bestTotal = total;
+        bestQty = qty;
+      }
+    }
+    return { id: best.id, qty: bestQty };
+  }
+  function applyInverter(choice) {
+    var radios = form.querySelectorAll('input[name="inverter_id"]');
+    var found = false;
+    for (var i = 0; i < radios.length; i++) {
+      var on = radios[i].value === choice.id;
+      radios[i].checked = on;
+      if (on) found = true;
+    }
+    if (!found) return;
+    var qtyInput = document.getElementById('inverter_qty');
+    if (qtyInput) qtyInput.value = String(choice.qty);
+  }
+  function syncInverterSelection() {
+    var key = inverterKey();
+    if (lastInverterKey === key) return;
+    lastInverterKey = key;
+    var choice = recommendInverter(currentDesign().inv);
+    if (choice) applyInverter(choice);
+  }
+
+  var lastPanelKey = null;
+  function panelCatalog() {
+    var list = [];
+    for (var i = 0; i < products.length; i++) {
+      if (products[i].category === 'panel' && num(products[i].watts) > 0) list.push(products[i]);
+    }
+    return list;
+  }
+  function panelQtyFor(panel, pv) {
+    pv = num(pv);
+    var watts = panel ? num(panel.watts) : 0;
+    if (pv <= 0 || watts <= 0) return 0;
+    return Math.max(1, Math.ceil((pv / watts) - 1e-9));
+  }
+  function recommendPanel(pv) {
+    var list = panelCatalog();
+    if (pv <= 0 || !list.length) return null;
+    var best = null;
+    var bestQty = 0;
+    var bestWatts = 0;
+    for (var i = 0; i < list.length; i++) {
+      var qty = panelQtyFor(list[i], pv);
+      var watts = num(list[i].watts);
+      var better = !best || qty < bestQty || (qty === bestQty && watts > bestWatts);
+      if (better) {
+        best = list[i];
+        bestQty = qty;
+        bestWatts = watts;
+      }
+    }
+    return { id: best.id, qty: bestQty };
+  }
+  function requiredPanelQty(panel) {
+    var pv = currentDesign().pv;
+    if (pv <= 0) return 0;
+    if (panel) return panelQtyFor(panel, pv);
+    var recommended = recommendPanel(pv);
+    return recommended ? recommended.qty : 0;
+  }
+  function applyPanel(choice) {
+    var radios = form.querySelectorAll('input[name="panel_id"]');
+    if (!choice) {
+      for (var i = 0; i < radios.length; i++) radios[i].checked = false;
+      return;
+    }
+    var found = false;
+    for (var j = 0; j < radios.length; j++) {
+      var on = radios[j].value === choice.id;
+      radios[j].checked = on;
+      if (on) found = true;
+    }
+    if (!found) return;
+    var qtyInput = document.getElementById('panel_qty');
+    if (qtyInput) qtyInput.value = String(choice.qty);
+  }
+  function syncPanelSelection() {
+    var key = String(currentDesign().pv);
+    if (lastPanelKey === key) return;
+    lastPanelKey = key;
+    applyPanel(recommendPanel(currentDesign().pv));
   }
 
   function selectBoard(inputName, category, range) {
@@ -218,7 +370,7 @@
       panelWatts: panelWatts,
       inverterWatts: inverterWatts,
       batteryKwh: batteryKwh,
-      panelStatus: fitInfo(panel ? panelQty : 0, design.panelCount),
+      panelStatus: fitInfo(panel ? panelQty : 0, requiredPanelQty(panel)),
       inverterStatus: inverter ? fitInfo(inverterWatts, design.inv) : '',
       batteryStatus: fitInfo(batteryKwh, design.battKwh),
       combinerAc: combinerAc,
@@ -238,11 +390,26 @@
     return Math.round(item.price) * qty;
   }
 
+  function setText(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function liveMeasure(id, suffix) {
+    var raw = String(val(id) || '').trim();
+    if (raw === '') return '—';
+    return trimNum(num(raw)) + ' ' + suffix;
+  }
+
   function renderDesign() {
+    setText('loadDayAmps', liveMeasure('day_amps', 'أمبير'));
+    setText('loadNightAmps', liveMeasure('night_amps', 'أمبير'));
+    setText('loadNightHours', liveMeasure('night_hours', 'ساعة'));
     var design = currentDesign();
+    var panelNeed = requiredPanelQty(product(selected('panel_id')));
     var boxes = document.querySelectorAll('#designStrip strong');
     if (boxes.length >= 3) {
-      boxes[0].textContent = design.panelCount + ' لوح';
+      boxes[0].textContent = panelNeed + ' لوح';
       boxes[1].textContent = wattsText(design.inv);
       boxes[2].textContent = kwhText(design.battKwh);
     }
@@ -252,7 +419,10 @@
     }
     var extra = document.getElementById('dailyLine');
     if (extra) {
-      extra.textContent = 'عدد الألواح = ' + trimNum(design.dayAmps) + ' أمبير × ' + trimNum(design.factor) + ' = ' + design.panelCount + ' لوح. حمل النهار ' + wattsText(design.dayW) + ' وحمل الليل ' + wattsText(design.nightW) + '.';
+      var recommended = recommendPanel(design.pv);
+      var line = 'استهلاك اليوم ' + trimNum(design.dailyKwh) + ' كيلو واط ساعة، وقدرة الألواح المطلوبة ' + wattsText(design.pv);
+      if (recommended) line += '، والعدد ' + recommended.qty + ' من الحجم الأكبر';
+      extra.textContent = line + '. حمل النهار ' + wattsText(design.dayW) + ' وحمل الليل ' + wattsText(design.nightW) + '.';
     }
   }
 
@@ -260,11 +430,11 @@
     var c = choice();
     var panelText = '';
     var panelNoticeStatus = 'ok';
-    if (c.design.panelCount <= 0 && !c.panel) {
-      panelText = 'لا حاجة لألواح لأن التجهيز النهاري صفر';
+    if (c.design.pv <= 0 && !c.panel) {
+      panelText = 'لا حاجة لألواح لأن الاستهلاك صفر';
     } else {
       panelNoticeStatus = c.panelStatus || 'low';
-      panelText = fitText('الألواح', panelNoticeStatus, c.panelQty + ' لوح', c.design.panelCount + ' لوح');
+      panelText = fitText('الألواح', panelNoticeStatus, c.panelQty + ' لوح', requiredPanelQty(c.panel) + ' لوح');
     }
     setNotice('panelFit', panelNoticeStatus, panelText);
 
@@ -427,6 +597,9 @@
 
   function show(next) {
     syncBoardSelection();
+    syncBatterySelection();
+    syncInverterSelection();
+    syncPanelSelection();
     index = Math.max(0, Math.min(steps.length - 1, next));
     steps.forEach(function (el, n) { el.classList.toggle('active', n === index); });
     dots.forEach(function (el, n) {
@@ -439,6 +612,11 @@
     document.getElementById('sendBtn').classList.toggle('is-hidden', !last);
     document.getElementById('draftBtn').classList.toggle('is-hidden', !last);
     document.getElementById('stepCount').textContent = 'الخطوة ' + (index + 1) + ' من ' + steps.length;
+    var currentDot = dots[index];
+    var currentLabel = currentDot ? currentDot.querySelector('.step-label') : null;
+    if (currentLabel && currentLabel.textContent) {
+      document.getElementById('stepCount').textContent += ' — ' + currentLabel.textContent;
+    }
     var strip = document.getElementById('designStrip');
     if (strip) strip.classList.toggle('is-hidden', index === 0);
     var daily = document.getElementById('dailyLine');
@@ -461,7 +639,7 @@
       if (dayH < 0.1 || nightH < 0.1 || dayH > 24 || nightH > 24) return 'ساعات التشغيل بين 0.1 و 24';
     }
     if (step === 2) {
-      if (currentDesign().panelCount > 0 && !selected('panel_id')) return 'اختر نوع اللوح';
+      if (currentDesign().pv > 0 && !selected('panel_id')) return 'اختر نوع اللوح';
       if (selected('panel_id') && num(val('panel_qty')) < 1) return 'حدد عدد الألواح';
     }
     if (step === 3) {
@@ -519,10 +697,19 @@
 
   form.addEventListener('change', function (event) {
     var target = event.target;
-    if (target && target.name === 'panel_id') {
-      var count = currentDesign().panelCount;
+    if (target && target.name === 'panel_id' && target.value) {
+      var panelPick = product(target.value);
+      var panelNeed = currentDesign().pv;
       var qtyInput = document.getElementById('panel_qty');
-      if (qtyInput) qtyInput.value = String(count > 0 ? count : 1);
+      if (qtyInput) qtyInput.value = String(panelQtyFor(panelPick, panelNeed));
+    }
+    if (target && target.name === 'inverter_id' && target.value) {
+      var inverter = product(target.value);
+      var inverterNeed = currentDesign();
+      if (inverter && inverter.watts > 0) {
+        var inverterQty = inverterNeed.inv > 0 ? Math.max(1, Math.ceil((inverterNeed.inv / inverter.watts) - 1e-9)) : 1;
+        document.getElementById('inverter_qty').value = String(inverterQty);
+      }
     }
     if (target && target.name === 'battery_id' && target.value) {
       var battery = product(target.value);
@@ -535,6 +722,9 @@
     if (target && (target.id === 'day_amps' || target.id === 'night_amps')) {
       syncBoardSelection();
     }
+    syncBatterySelection();
+    syncInverterSelection();
+    syncPanelSelection();
     renderDesign();
     renderFit();
     if (index === steps.length - 1) renderSummary();
@@ -544,6 +734,9 @@
     if (target && (target.id === 'day_amps' || target.id === 'night_amps')) {
       syncBoardSelection();
     }
+    syncBatterySelection();
+    syncInverterSelection();
+    syncPanelSelection();
     renderDesign();
     renderFit();
     if (index === steps.length - 1) renderSummary();
@@ -602,5 +795,10 @@
     selectBoard('combiner_dc_id', 'combiner_dc', recommendedRange(systemAmps()));
   }
   lastBoardKey = boardKey();
+  if (selected('battery_id')) lastBatteryKey = batteryKey();
+  if (selected('inverter_id')) lastInverterKey = inverterKey();
+  if (selected('panel_id') && currentDesign().pv > 0) {
+    lastPanelKey = String(currentDesign().pv);
+  }
   show(index);
 })();
