@@ -3,10 +3,15 @@ require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/includes/layout.php';
 
 if (current_user()) {
-    redirect('dashboard.php');
+    redirect(is_guest() ? 'quote.php' : 'dashboard.php');
 }
 
 $error = '';
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && (($_POST['guest'] ?? '') === '1')) {
+    check_csrf();
+    start_guest();
+    redirect('quote.php');
+}
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (time() - (int) ($_SESSION['login_fail_at'] ?? 0) > 600) {
         $_SESSION['login_fails'] = 0;
@@ -31,7 +36,7 @@ render_head('دخول');
 ?>
 <body class="login-page">
   <div>
-    <form class="login-card" method="post" autocomplete="off">
+    <div class="login-card">
       <svg class="sun" viewBox="0 0 84 84" aria-hidden="true">
         <circle cx="42" cy="42" r="16" fill="#f6c453"/>
         <g stroke="#f6c453" stroke-width="4" stroke-linecap="round">
@@ -50,17 +55,26 @@ render_head('دخول');
           <div class="hint">غيّر كلمة المرور بعد أول دخول.</div>
         </div>
       <?php endif; ?>
-      <?php echo csrf_field(); ?>
-      <div class="field">
-        <label for="username">اسم المستخدم</label>
-        <input class="input ltr" id="username" name="username" autocomplete="username" required>
-      </div>
-      <div class="field">
-        <label for="password">كلمة المرور</label>
-        <input class="input ltr" id="password" name="password" type="password" autocomplete="current-password" required>
-      </div>
-      <button class="btn btn-gold" type="submit" style="width:100%">دخول</button>
-    </form>
+      <form method="post" autocomplete="off">
+        <?php echo csrf_field(); ?>
+        <div class="field">
+          <label for="username">اسم المستخدم</label>
+          <input class="input ltr" id="username" name="username" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="password">كلمة المرور</label>
+          <input class="input ltr" id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-gold" type="submit" style="width:100%">دخول</button>
+      </form>
+      <div class="login-or">أو</div>
+      <form method="post">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="guest" value="1">
+        <button class="btn btn-navy" type="submit" style="width:100%">دخول الضيوف</button>
+        <p class="hint" style="text-align:center">بدون حساب: صمّم المنظومة، شوف السعر، وأرسلها للمبيعات</p>
+      </form>
+    </div>
     <p class="login-foot">البيانات تُحفظ بصيغة JSON داخل الاستضافة</p>
   </div>
 </body>

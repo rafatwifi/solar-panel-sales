@@ -335,7 +335,17 @@ function current_user($refresh = false)
     }
     $loaded = true;
     $user = null;
-    $uid = $_SESSION['uid'] ?? '';
+    $uid = (string) ($_SESSION['uid'] ?? '');
+    $guestId = (string) ($_SESSION['guest_id'] ?? '');
+    if ($uid === '' && $guestId !== '' && preg_match('/^g_[a-f0-9]{16}$/', $guestId)) {
+        $user = [
+            'id' => $guestId,
+            'name' => 'ضيف',
+            'role' => 'guest',
+            'active' => true,
+        ];
+        return $user;
+    }
     if ($uid === '') {
         return null;
     }
@@ -353,6 +363,25 @@ function is_admin()
 {
     $user = current_user();
     return $user && ($user['role'] ?? '') === 'admin';
+}
+
+function is_guest()
+{
+    $user = current_user();
+    return $user && ($user['role'] ?? '') === 'guest';
+}
+
+function sees_prices()
+{
+    return is_admin() || is_guest();
+}
+
+function start_guest()
+{
+    session_regenerate_id(true);
+    unset($_SESSION['uid']);
+    $_SESSION['guest_id'] = 'g_' . bin2hex(random_bytes(8));
+    $_SESSION['login_fails'] = 0;
 }
 
 function require_login()
@@ -383,6 +412,7 @@ function attempt_login($username, $password)
         }
         if (password_verify($password, (string) ($user['password'] ?? ''))) {
             session_regenerate_id(true);
+            unset($_SESSION['guest_id']);
             $_SESSION['uid'] = $user['id'];
             $_SESSION['login_fails'] = 0;
             return 'ok';
@@ -519,6 +549,14 @@ function item_shows_price($item, $products)
         }
     }
     return shows_price($item);
+}
+
+function viewer_sees_line_price($item, $products)
+{
+    if (sees_prices()) {
+        return true;
+    }
+    return item_shows_price($item, $products);
 }
 
 function money($amount)

@@ -38,7 +38,7 @@ foreach (['panel', 'inverter', 'battery', 'combiner_ac', 'combiner_dc'] as $cate
 }
 $pricedLines = 0;
 foreach ($lines as $item) {
-    if (item_shows_price($item, $catalog)) {
+    if (viewer_sees_line_price($item, $catalog)) {
         $pricedLines++;
     }
 }
@@ -529,7 +529,7 @@ $nightHoursText = rtrim(rtrim(number_format($nightHoursRaw, 2, '.', ''), '0'), '
                       </td>
                       <td class="qty"><?php echo (int) ($item['qty'] ?? 0); ?></td>
                       <?php if ($pricedLines > 0): ?>
-                        <td class="price"><?php if (item_shows_price($item, $catalog)) { echo h(money($item['line_total'] ?? 0)); } ?></td>
+                        <td class="price"><?php if (viewer_sees_line_price($item, $catalog)) { echo h(money($item['line_total'] ?? 0)); } ?></td>
                       <?php endif; ?>
                     </tr>
                   <?php endforeach; ?>

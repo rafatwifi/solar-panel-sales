@@ -254,7 +254,7 @@ render_header('طلب ' . ($order['code'] ?? ''), 'orders.php');
 </div>
 
 <div class="card" style="margin-top:14px">
-  <h2><?php echo is_admin() ? 'تفاصيل السعر' : 'تفاصيل المنظومة'; ?></h2>
+  <h2><?php echo sees_prices() ? 'تفاصيل السعر' : 'تفاصيل المنظومة'; ?></h2>
   <?php foreach ($order['items'] ?? [] as $item): ?>
     <?php if (!is_admin() && ($item['category'] ?? '') === 'accessory') continue; ?>
     <div class="sum-row">
@@ -270,7 +270,7 @@ render_header('طلب ' . ($order['code'] ?? ''), 'orders.php');
         </div>
         <?php if (!empty($item['specs'])): ?><div class="muted"><?php echo nl2br(h($item['specs'])); ?></div><?php endif; ?>
       </div>
-      <?php if (is_admin() || item_shows_price($item, $catalog)): ?><div class="money line-price"><?php echo h(money($item['line_total'] ?? 0)); ?></div><?php endif; ?>
+      <?php if (viewer_sees_line_price($item, $catalog)): ?><div class="money line-price"><?php echo h(money($item['line_total'] ?? 0)); ?></div><?php endif; ?>
     </div>
   <?php endforeach; ?>
 

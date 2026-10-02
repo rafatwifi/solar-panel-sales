@@ -104,7 +104,7 @@ foreach ($products as $product) {
         'ampMin' => (float) ($product['amp_min'] ?? 0),
         'ampMax' => (float) ($product['amp_max'] ?? 0),
         'price' => (float) ($product['price'] ?? 0),
-        'showPrice' => is_admin() || shows_price($product),
+        'showPrice' => sees_prices() || shows_price($product),
     ];
 }
 $jsSettings = [
@@ -137,7 +137,7 @@ function pick_card($product, $inputName, $checked)
           <strong><?php echo h($product['name']); ?></strong>
           <?php if (!empty($product['brand'])): ?><small><?php echo h($product['brand']); ?></small><?php endif; ?>
           <?php if ($badge !== ''): ?><em><?php echo h($badge); ?></em><?php endif; ?>
-          <?php if (is_admin() || shows_price($product)): ?><b><?php echo h(money($product['price'] ?? 0)); ?></b><?php endif; ?>
+          <?php if (sees_prices() || shows_price($product)): ?><b><?php echo h(money($product['price'] ?? 0)); ?></b><?php endif; ?>
         </span>
       </span>
     </label>
@@ -304,7 +304,7 @@ render_header('تصميم منظومة', 'quote.php');
 
   <section class="step">
     <h2>البوردات</h2>
-    <p class="hint">كل بورد على حدة. النظام يختار المدى من أكبر أمبير بين النهار والليل: حتى 20 يستخدم 10-20، وحتى 30 يستخدم 20-30، وأكثر من 30 يستخدم 30-40. تقدر تغيّر الاختيار. العدد 1.</p>
+    <p class="hint">كل بورد على حدة. النظام يختار المدى من أكبر أمبير بين النهار والليل، وتقدر تغيّر النوع. زِد العدد إذا تحتاج أكثر من بورد أو تكرار لنفس البورد.</p>
     <h3>بورد AC</h3>
     <?php if (!$combinersAc): ?>
       <div class="notice notice-low">لا توجد بوردات AC. <?php if (is_admin()): ?>أضفها من صفحة المنتجات.<?php else: ?>اطلب من الإدارة إضافة البوردات.<?php endif; ?></div>
@@ -322,9 +322,13 @@ render_header('تصميم منظومة', 'quote.php');
         <?php endforeach; ?>
       </div>
     <?php endif; ?>
-    <input type="hidden" name="combiner_ac_qty" value="1">
     <div class="qty-bar">
-      <span>العدد 1</span>
+      <span>عدد بوردات AC</span>
+      <div class="stepper">
+        <button type="button" data-stepper="combiner_ac_qty" data-dir="-1">−</button>
+        <input class="input num" id="combiner_ac_qty" name="combiner_ac_qty" min="1" value="<?php echo h($old['combiner_ac_qty'] ?? 1); ?>">
+        <button type="button" data-stepper="combiner_ac_qty" data-dir="1">+</button>
+      </div>
       <strong id="combinerAcLine"></strong>
     </div>
     <div id="combinerAcFit" class="notice is-hidden" aria-live="polite"></div>
@@ -346,9 +350,13 @@ render_header('تصميم منظومة', 'quote.php');
         <?php endforeach; ?>
       </div>
     <?php endif; ?>
-    <input type="hidden" name="combiner_dc_qty" value="1">
     <div class="qty-bar">
-      <span>العدد 1</span>
+      <span>عدد بوردات DC</span>
+      <div class="stepper">
+        <button type="button" data-stepper="combiner_dc_qty" data-dir="-1">−</button>
+        <input class="input num" id="combiner_dc_qty" name="combiner_dc_qty" min="1" value="<?php echo h($old['combiner_dc_qty'] ?? 1); ?>">
+        <button type="button" data-stepper="combiner_dc_qty" data-dir="1">+</button>
+      </div>
       <strong id="combinerDcLine"></strong>
     </div>
     <div id="combinerDcFit" class="notice is-hidden" aria-live="polite"></div>
@@ -381,4 +389,4 @@ window.SOLAR = <?php echo json_for_script([
 ]); ?>;
 </script>
 <?php
-render_footer(['assets/js/quote.js?v=16']);
+render_footer(['assets/js/quote.js?v=17']);

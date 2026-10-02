@@ -2,6 +2,9 @@
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/includes/layout.php';
 require_login();
+if (is_guest()) {
+    redirect('quote.php');
+}
 
 $me = current_user();
 $errors = [];

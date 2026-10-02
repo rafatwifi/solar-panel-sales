@@ -39,7 +39,7 @@ function render_head($title)
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/css/app.css?v=3">
+  <link rel="stylesheet" href="assets/css/app.css?v=4">
 </head>
     <?php
 }
@@ -68,9 +68,9 @@ function render_header($title, $active = '')
         }
     }
     $items = [
-        ['dashboard.php', 'home', 'الرئيسية', 'all'],
+        ['dashboard.php', 'home', 'الرئيسية', 'staff'],
         ['quote.php', 'sun', 'تصميم منظومة', 'all'],
-        ['orders.php', 'orders', 'الطلبات', 'all'],
+        ['orders.php', 'orders', is_guest() ? 'طلباتي' : 'الطلبات', 'all'],
         ['products.php', 'box', 'المنتجات', 'admin'],
         ['users.php', 'users', 'الموظفون', 'admin'],
         ['settings.php', 'gear', 'الإعدادات', 'admin'],
@@ -82,7 +82,7 @@ function render_header($title, $active = '')
 <div class="shell">
   <input type="checkbox" id="navToggle" class="nav-check" aria-hidden="true">
   <aside class="side">
-    <a class="brand" href="dashboard.php">
+    <a class="brand" href="<?php echo is_guest() ? 'quote.php' : 'dashboard.php'; ?>">
       <?php if ($logo): ?>
         <img src="<?php echo h($logo); ?>" alt="">
       <?php else: ?>
@@ -96,6 +96,7 @@ function render_header($title, $active = '')
     <nav class="nav">
       <?php foreach ($items as $item): ?>
         <?php if ($item[3] === 'admin' && !is_admin()) continue; ?>
+        <?php if ($item[3] === 'staff' && is_guest()) continue; ?>
         <a class="<?php echo $active === $item[0] ? 'active' : ''; ?>" href="<?php echo h($item[0]); ?>">
           <?php echo icon($item[1]); ?>
           <span><?php echo h($item[2]); ?></span>
@@ -114,13 +115,24 @@ function render_header($title, $active = '')
     <header class="topbar">
       <label for="navToggle" class="icon-btn only-mobile" aria-label="فتح القائمة"><?php echo icon('menu'); ?></label>
       <h1><?php echo h($title); ?></h1>
+      <?php $roleLabel = is_admin() ? 'إدارة' : (is_guest() ? 'ضيف' : 'موظف'); ?>
+      <?php if (is_guest()): ?>
+      <span class="userchip">
+        <span class="avatar"><?php echo h(first_char($user['name'] ?? '')); ?></span>
+        <span>
+          <strong><?php echo h($user['name'] ?? ''); ?></strong>
+          <small><?php echo h($roleLabel); ?></small>
+        </span>
+      </span>
+      <?php else: ?>
       <a class="userchip" href="account.php">
         <span class="avatar"><?php echo h(first_char($user['name'] ?? '')); ?></span>
         <span>
           <strong><?php echo h($user['name'] ?? ''); ?></strong>
-          <small><?php echo is_admin() ? 'إدارة' : 'موظف'; ?></small>
+          <small><?php echo h($roleLabel); ?></small>
         </span>
       </a>
+      <?php endif; ?>
     </header>
     <div class="content" id="content">
     <?php

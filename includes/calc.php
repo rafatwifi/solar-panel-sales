@@ -274,7 +274,9 @@ function default_quote_form($settings)
         'battery_id' => '',
         'battery_qty' => 1,
         'combiner_ac_id' => '',
+        'combiner_ac_qty' => 1,
         'combiner_dc_id' => '',
+        'combiner_dc_qty' => 1,
         'notes' => '',
         'acc' => [],
     ];
@@ -297,7 +299,9 @@ function order_form_values($order)
         'battery_id' => '',
         'battery_qty' => 1,
         'combiner_ac_id' => '',
+        'combiner_ac_qty' => 1,
         'combiner_dc_id' => '',
+        'combiner_dc_qty' => 1,
         'notes' => $order['notes'] ?? '',
         'acc' => [],
     ];
@@ -314,8 +318,10 @@ function order_form_values($order)
             $values['battery_qty'] = $item['qty'];
         } elseif ($category === 'combiner_ac') {
             $values['combiner_ac_id'] = $item['product_id'];
+            $values['combiner_ac_qty'] = max(1, (int) ($item['qty'] ?? 1));
         } elseif ($category === 'combiner_dc') {
             $values['combiner_dc_id'] = $item['product_id'];
+            $values['combiner_dc_qty'] = max(1, (int) ($item['qty'] ?? 1));
         } elseif ($category === 'accessory') {
             $values['acc'][$item['product_id']] = $item['qty'];
         }
@@ -397,6 +403,8 @@ function build_quote($post, $user, $settings, $products)
     $boardRange = recommended_board_range($systemAmps);
     $acId = trim((string) ($post['combiner_ac_id'] ?? ''));
     $dcId = trim((string) ($post['combiner_dc_id'] ?? ''));
+    $acQty = (int) round(num($post['combiner_ac_qty'] ?? 1));
+    $dcQty = (int) round(num($post['combiner_dc_qty'] ?? 1));
     $ac = $acId !== '' ? product_by_id($products, $acId) : null;
     $dc = $dcId !== '' ? product_by_id($products, $dcId) : null;
     $acOk = $ac && ($ac['category'] ?? '') === 'combiner_ac' && !empty($ac['active']);
@@ -416,6 +424,12 @@ function build_quote($post, $user, $settings, $products)
             $errors[] = 'بورد DC المختار غير صالح';
         }
     }
+    if ($acOk && ($acQty < 1 || $acQty > 99)) {
+        $errors[] = 'عدد بوردات AC غير صحيح';
+    }
+    if ($dcOk && ($dcQty < 1 || $dcQty > 99)) {
+        $errors[] = 'عدد بوردات DC غير صحيح';
+    }
 
     $notes = clean_text($post['notes'] ?? '', 1000);
     $items = [];
@@ -428,11 +442,11 @@ function build_quote($post, $user, $settings, $products)
     if ($battery && ($battery['category'] ?? '') === 'battery' && $batteryQty >= 1 && $batteryQty <= 99) {
         $items[] = line_item($battery, $batteryQty);
     }
-    if ($acOk) {
-        $items[] = line_item($ac, 1);
+    if ($acOk && $acQty >= 1 && $acQty <= 99) {
+        $items[] = line_item($ac, $acQty);
     }
-    if ($dcOk) {
-        $items[] = line_item($dc, 1);
+    if ($dcOk && $dcQty >= 1 && $dcQty <= 99) {
+        $items[] = line_item($dc, $dcQty);
     }
 
     $equipment = 0;
@@ -520,7 +534,9 @@ function build_quote($post, $user, $settings, $products)
         'battery_id' => $batteryId,
         'battery_qty' => max(1, $batteryQty),
         'combiner_ac_id' => $acId,
+        'combiner_ac_qty' => max(1, $acQty),
         'combiner_dc_id' => $dcId,
+        'combiner_dc_qty' => max(1, $dcQty),
         'notes' => $notes,
         'acc' => [],
     ];

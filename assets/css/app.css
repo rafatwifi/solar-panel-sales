@@ -608,6 +608,21 @@ input.ltr, textarea.ltr { display: block; width: 100%; text-align: start; }
   margin-bottom: 12px;
   font-weight: 700;
 }
+.login-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+.login-or::before,
+.login-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
 .login-foot { text-align: center; color: #d5e2f2; margin-top: 14px; }
 
 @media (max-width: 960px) {

@@ -356,6 +356,8 @@
     var panelQty = Math.max(0, Math.round(num(val('panel_qty'))));
     var inverterQty = Math.max(0, Math.round(num(val('inverter_qty'))));
     var batteryQty = Math.max(0, Math.round(num(val('battery_qty'))));
+    var acQty = Math.max(0, Math.round(num(val('combiner_ac_qty'))));
+    var dcQty = Math.max(0, Math.round(num(val('combiner_dc_qty'))));
     var panelWatts = panel ? panel.watts * panelQty : 0;
     var inverterWatts = inverter ? inverter.watts * inverterQty : 0;
     var batteryKwh = battery ? battery.kwh * batteryQty : 0;
@@ -375,6 +377,8 @@
       batteryStatus: fitInfo(batteryKwh, design.battKwh),
       combinerAc: combinerAc,
       combinerDc: combinerDc,
+      acQty: acQty,
+      dcQty: dcQty,
       acStatus: boardFit(combinerAc, design.systemAmps),
       dcStatus: boardFit(combinerDc, design.systemAmps)
     };
@@ -462,13 +466,14 @@
     if (inverterLine) inverterLine.textContent = c.inverter && showsPrice(c.inverter) ? money(lineTotal(c.inverter, c.inverterQty)) : '';
     if (batteryLine) batteryLine.textContent = c.battery && showsPrice(c.battery) ? money(lineTotal(c.battery, c.batteryQty)) : '';
 
-    renderBoardFit('combinerAcFit', 'combinerAcLine', 'بورد AC', c.combinerAc, c.acStatus, c.design.systemAmps);
-    renderBoardFit('combinerDcFit', 'combinerDcLine', 'بورد DC', c.combinerDc, c.dcStatus, c.design.systemAmps);
+    renderBoardFit('combinerAcFit', 'combinerAcLine', 'بورد AC', c.combinerAc, c.acStatus, c.design.systemAmps, c.acQty);
+    renderBoardFit('combinerDcFit', 'combinerDcLine', 'بورد DC', c.combinerDc, c.dcStatus, c.design.systemAmps, c.dcQty);
   }
 
-  function renderBoardFit(noticeId, lineId, label, item, status, amps) {
+  function renderBoardFit(noticeId, lineId, label, item, status, amps, qty) {
     var text = '';
     var noticeStatus = status || 'ok';
+    qty = Math.max(0, Math.round(num(qty)));
     if (amps <= 0 && !item) {
       text = 'لا حاجة ل' + label + ' لأن الأمبير صفر';
       noticeStatus = 'ok';
@@ -477,10 +482,11 @@
       noticeStatus = 'low';
     } else if (item) {
       text = fitText(label, noticeStatus, rangeText(item.ampMin, item.ampMax), boardRequiredText(amps));
+      if (qty > 1) text += ' العدد ' + qty + '.';
     }
     setNotice(noticeId, noticeStatus, text);
     var line = document.getElementById(lineId);
-    if (line) line.textContent = item && showsPrice(item) ? money(lineTotal(item, 1)) : '';
+    if (line) line.textContent = item && showsPrice(item) ? money(lineTotal(item, Math.max(1, qty))) : '';
   }
 
   function addRow(parent, title, meta, price) {
@@ -542,8 +548,8 @@
     addPriced(c.panel, c.panelQty, c.panel ? (c.panelQty + ' × ' + wattsText(c.panel.watts)) : '');
     addPriced(c.inverter, c.inverterQty, c.inverter ? (c.inverterQty + ' × ' + wattsText(c.inverter.watts)) : '');
     addPriced(c.battery, c.batteryQty, c.battery ? (c.batteryQty + ' × ' + kwhText(c.battery.kwh)) : '');
-    addPriced(c.combinerAc, 1, c.combinerAc ? ('1 × ' + rangeText(c.combinerAc.ampMin, c.combinerAc.ampMax)) : '');
-    addPriced(c.combinerDc, 1, c.combinerDc ? ('1 × ' + rangeText(c.combinerDc.ampMin, c.combinerDc.ampMax)) : '');
+    addPriced(c.combinerAc, c.acQty, c.combinerAc ? (c.acQty + ' × ' + rangeText(c.combinerAc.ampMin, c.combinerAc.ampMax)) : '');
+    addPriced(c.combinerDc, c.dcQty, c.combinerDc ? (c.dcQty + ' × ' + rangeText(c.combinerDc.ampMin, c.combinerDc.ampMax)) : '');
 
     var settings = window.SOLAR.settings;
     var fee = Math.max(0, Math.round(num(settings.cost_panel_install) * c.panelQty))
@@ -656,6 +662,8 @@
       var amps = systemAmps();
       if (amps > 0 && !selected('combiner_ac_id')) return 'اختر بورد AC';
       if (amps > 0 && !selected('combiner_dc_id')) return 'اختر بورد DC';
+      if (selected('combiner_ac_id') && num(val('combiner_ac_qty')) < 1) return 'حدد عدد بوردات AC';
+      if (selected('combiner_dc_id') && num(val('combiner_dc_qty')) < 1) return 'حدد عدد بوردات DC';
     }
     return '';
   }
